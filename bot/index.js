@@ -2,43 +2,44 @@ require("dotenv").config();
 const { Telegraf, Markup, Scenes, session } = require("telegraf");
 const axios = require("axios");
 const sharp = require("sharp");
-const FormData = require("form-data");
+const mongoose = require("mongoose");
 
 // Initialize bot
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// Function to upload image to ImgBB
-async function uploadToImgBB(imageBuffer) {
+// Connect to MongoDB
+const connectDB = async () => {
   try {
-    console.log("Uploading image to ImgBB...");
-
-    // Convert buffer to base64
-    const base64Image = imageBuffer.toString("base64");
-
-    const formData = new FormData();
-    formData.append("image", base64Image);
-
-    // Make request to ImgBB API
-    const response = await axios.post(
-      `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_API_KEY}`,
-      formData,
-      {
-        headers: formData.getHeaders(),
-        timeout: 30000,
-      }
-    );
-
-    console.log("ImgBB upload successful:", response.data.data.url);
-    return response.data.data.url;
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("MongoDB connected for bot");
   } catch (error) {
-    console.error("ImgBB upload failed:", error.message);
+    console.error("MongoDB connection error:", error);
+    process.exit(1);
+  }
+};
 
-    if (error.response) {
-      console.error("Response status:", error.response.status);
-      console.error("Response data:", error.response.data);
-    }
+// Import Project model
+const Project = require("../models/Project");
 
-    throw new Error("Failed to upload image to ImgBB: " + error.message);
+// Function to process and store image in MongoDB
+async function processAndStoreImage(imageBuffer, filename) {
+  try {
+    console.log("Processing and storing image in MongoDB...");
+
+    // Compress and convert to buffer
+    const compressedImage = await sharp(imageBuffer)
+      .jpeg({ quality: 70 })
+      .toBuffer();
+
+    return {
+      data: compressedImage,
+      contentType: "image/jpeg",
+      filename: filename,
+      size: compressedImage.length,
+    };
+  } catch (error) {
+    console.error("Image processing failed:", error.message);
+    throw new Error("Failed to process image: " + error.message);
   }
 }
 
@@ -97,22 +98,22 @@ const projectWizard = new Scenes.WizardScene(
       }
 
       try {
-        // Prepare JSON request body
-        const payload = {
+        // Prepare project data
+        const projectData = {
           title: ctx.wizard.state.title,
           description: ctx.wizard.state.description,
           category: ctx.wizard.state.category,
           tools: ctx.wizard.state.tools,
-          images: ctx.wizard.state.images, // array of URLs from ImgBB
+          images: ctx.wizard.state.images, // array of image objects
         };
 
-        console.log("Submitting project:", payload);
+        console.log("Creating project in MongoDB...");
 
-        await axios.post(
-          "https://portfolio-9pxl.onrender.com/api/projects",
-          payload,
-          { timeout: 30000 }
-        );
+        // Create project in MongoDB
+        const project = new Project(projectData);
+        await project.save();
+
+        console.log("Project created successfully:", project._id);
 
         await ctx.reply(
           "✅ Project uploaded successfully!",
@@ -133,24 +134,20 @@ const projectWizard = new Scenes.WizardScene(
 
         console.log("Downloading image from Telegram...");
 
-        // download
+        // Download image
         const response = await axios.get(fileLink.href, {
           responseType: "arraybuffer",
           timeout: 30000,
         });
 
-        console.log("Compressing image...");
+        // Process and store image
+        const filename = `project_image_${Date.now()}.jpg`;
+        const processedImage = await processAndStoreImage(
+          response.data,
+          filename
+        );
 
-        // compress
-        const compressedImage = await sharp(response.data)
-          .jpeg({ quality: 70 })
-          .toBuffer();
-
-        // upload to ImgBB
-        console.log("Uploading image to ImgBB...");
-        const imageUrl = await uploadToImgBB(compressedImage);
-
-        ctx.wizard.state.images.push(imageUrl);
+        ctx.wizard.state.images.push(processedImage);
 
         await ctx.reply(
           `✅ Image added (${ctx.wizard.state.images.length}/3)\nSend another or type 'finish'.`
@@ -177,13 +174,24 @@ bot.catch((err, ctx) => {
   ctx.reply("An error occurred. Please try again.");
 });
 
-const startBot = () => {
-  bot.launch();
-  console.log("Bot started");
+const startBot = async () => {
+  try {
+    await connectDB();
+    bot.launch();
+    console.log("Bot started with MongoDB image storage");
+  } catch (error) {
+    console.error("Failed to start bot:", error);
+  }
 };
 
 // Handle graceful shutdown
-process.once("SIGINT", () => bot.stop("SIGINT"));
-process.once("SIGTERM", () => bot.stop("SIGTERM"));
+process.once("SIGINT", () => {
+  mongoose.connection.close();
+  bot.stop("SIGINT");
+});
+process.once("SIGTERM", () => {
+  mongoose.connection.close();
+  bot.stop("SIGTERM");
+});
 
 module.exports = startBot;
