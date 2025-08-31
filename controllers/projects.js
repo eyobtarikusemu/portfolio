@@ -14,7 +14,7 @@ const getProjects = async (req, res) => {
 const getProjectImage = async (req, res) => {
   try {
     const project = await Project.findById(req.params.projectId);
-    if (!project  !project.images[req.params.imageIndex]) {
+    if (!project  || !project.images[req.params.imageIndex]) {
       return res.status(404).json({ msg: "Image not found" });
     }
 
@@ -73,3 +73,4 @@ const createProject = async (req, res) => {
 };
 
 module.exports = { getProjects, createProject, getProjectImage };
+
