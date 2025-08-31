@@ -26,9 +26,9 @@ const projectWizard = new Scenes.WizardScene(
     await ctx.reply(
       "Choose the category:",
       Markup.keyboard(
-        ["Logo Design", "Branding"],
+       [ ["Logo Design", "Branding"],
         ["Web Design", "Illustration"],
-        ["UI/UX", "Poster"]
+        ["UI/UX", "Poster"]]
       ).oneTime()
     );
     return ctx.wizard.next();
@@ -134,4 +134,5 @@ const startBot = () => {
 };
 
 module.exports = startBot;
+
 
