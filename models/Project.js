@@ -1,5 +1,24 @@
 const mongoose = require("mongoose");
 
+const imageSchema = new mongoose.Schema({
+  data: {
+    type: Buffer,
+    required: true,
+  },
+  contentType: {
+    type: String,
+    required: true,
+  },
+  filename: {
+    type: String,
+    required: true,
+  },
+  size: {
+    type: Number,
+    required: true,
+  },
+});
+
 const projectSchema = new mongoose.Schema({
   title: {
     type: String,
@@ -12,21 +31,21 @@ const projectSchema = new mongoose.Schema({
     trim: true,
   },
   category: {
-    type: String, // e.g. "Logo Design", "Branding", "Poster", "UI/UX"
+    type: String,
     required: true,
   },
   images: {
-    type: [String], // multiple image URLs (project previews)
+    type: [imageSchema], // Store images as binary data with metadata
     required: true,
   },
   tools: {
-    type: [String], // e.g. ["Photoshop", "Illustrator", "Figma"]
+    type: [String],
   },
   client: {
-    type: String, // Optional - client name
+    type: String,
   },
   link: {
-    type: String, // optional - external link (Behance, Dribbble, etc.)
+    type: String,
   },
   date: {
     type: Date,
