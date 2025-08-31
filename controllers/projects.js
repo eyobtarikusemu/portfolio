@@ -19,10 +19,11 @@ const getProjectImage = async (req, res) => {
     }
 
     const image = project.images[req.params.imageIndex];
-    res.set('Content-Type', image.contentType);
-    res.set('Content-Length', image.size);
-    res.set('Content-Disposition', `inline; filename="${image.filename}"`);
-    res.send(image.data);
+   res.set("Content-Type", image.contentType || "image/jpeg");
+    res.set("Content-Length", image.size);
+    res.set("Content-Disposition", inline; filename="${image.filename}");
+
+    res.send(Buffer.from(image.data));
   } catch (error) {
     console.log(error);
     res.status(500).json({ msg: error });
@@ -73,5 +74,6 @@ const createProject = async (req, res) => {
 };
 
 module.exports = { getProjects, createProject, getProjectImage };
+
 
 
