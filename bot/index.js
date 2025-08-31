@@ -19,7 +19,7 @@ async function uploadToServer(imageBuffer, filename) {
     });
 
     const response = await axios.post(
-      "https://eyobtariku.rf.gd/uploads/upload.php",
+      "https://eyobtariku.rf.gd/uploads/uploads.php",
       formData,
       {
         headers: formData.getHeaders(),
@@ -160,3 +160,4 @@ const startBot = () => {
 };
 
 module.exports = startBot;
+
