@@ -41,7 +41,7 @@ const createProject = async (req, res) => {
 🚀 *New Project Uploaded!*  
 📌 *Title:* ${project.title}  
 🖼 *Category:* ${project.category}  
-🛠 *Tools:* ${project.tools?.join(", ")  "N/A"}  
+🛠 *Tools:* ${project.tools?.join(", ") || "N/A"}  
 👤 *Client:* ${project.client || "N/A"}  
     `;
 
@@ -73,4 +73,5 @@ const createProject = async (req, res) => {
 };
 
 module.exports = { getProjects, createProject, getProjectImage };
+
 
