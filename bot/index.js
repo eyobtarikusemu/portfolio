@@ -2,34 +2,43 @@ require("dotenv").config();
 const { Telegraf, Markup, Scenes, session } = require("telegraf");
 const axios = require("axios");
 const sharp = require("sharp");
-const fs = require("fs");
-const path = require("path");
 const FormData = require("form-data");
 
 // Initialize bot
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// Function to upload image to your server
-async function uploadToServer(imageBuffer, filename) {
+// Function to upload image to ImgBB
+async function uploadToImgBB(imageBuffer) {
   try {
-    const formData = new FormData();
-    formData.append("image", imageBuffer, {
-      filename: filename,
-      contentType: "image/jpeg",
-    });
+    console.log("Uploading image to ImgBB...");
 
+    // Convert buffer to base64
+    const base64Image = imageBuffer.toString("base64");
+
+    const formData = new FormData();
+    formData.append("image", base64Image);
+
+    // Make request to ImgBB API
     const response = await axios.post(
-      "https://eyobtariku.rf.gd/uploads/uploads.php",
+      `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_API_KEY}`,
       formData,
       {
         headers: formData.getHeaders(),
+        timeout: 30000,
       }
     );
 
-    return response.data.url;
+    console.log("ImgBB upload successful:", response.data.data.url);
+    return response.data.data.url;
   } catch (error) {
-    console.error("Upload failed:", error.message);
-    throw new Error("Failed to upload image to server");
+    console.error("ImgBB upload failed:", error.message);
+
+    if (error.response) {
+      console.error("Response status:", error.response.status);
+      console.error("Response data:", error.response.data);
+    }
+
+    throw new Error("Failed to upload image to ImgBB: " + error.message);
   }
 }
 
@@ -94,12 +103,15 @@ const projectWizard = new Scenes.WizardScene(
           description: ctx.wizard.state.description,
           category: ctx.wizard.state.category,
           tools: ctx.wizard.state.tools,
-          images: ctx.wizard.state.images, // array of URLs
+          images: ctx.wizard.state.images, // array of URLs from ImgBB
         };
+
+        console.log("Submitting project:", payload);
 
         await axios.post(
           "https://portfolio-9pxl.onrender.com/api/projects",
-          payload
+          payload,
+          { timeout: 30000 }
         );
 
         await ctx.reply(
@@ -107,40 +119,45 @@ const projectWizard = new Scenes.WizardScene(
           Markup.removeKeyboard()
         );
       } catch (err) {
-        console.error("Upload failed:", err.message);
-        await ctx.reply("❌ Failed to upload project.");
+        console.error("Project upload failed:", err.message);
+        await ctx.reply("❌ Failed to upload project. Please try again later.");
       }
 
       return ctx.scene.leave();
     }
 
     if (ctx.message.photo) {
-      const photoId = ctx.message.photo.pop().file_id;
-      const fileLink = await ctx.telegram.getFileLink(photoId);
-
       try {
+        const photoId = ctx.message.photo.pop().file_id;
+        const fileLink = await ctx.telegram.getFileLink(photoId);
+
+        console.log("Downloading image from Telegram...");
+
         // download
         const response = await axios.get(fileLink.href, {
           responseType: "arraybuffer",
+          timeout: 30000,
         });
+
+        console.log("Compressing image...");
 
         // compress
         const compressedImage = await sharp(response.data)
           .jpeg({ quality: 70 })
           .toBuffer();
 
-        // upload to your server
-        const filename = `compressed-${Date.now()}.jpg`;
-        const publicUrl = await uploadToServer(compressedImage, filename);
+        // upload to ImgBB
+        console.log("Uploading image to ImgBB...");
+        const imageUrl = await uploadToImgBB(compressedImage);
 
-        ctx.wizard.state.images.push(publicUrl);
+        ctx.wizard.state.images.push(imageUrl);
 
         await ctx.reply(
-          `✅ Image added (${ctx.wizard.state.images.length})\nSend another or type 'finish'.`
+          `✅ Image added (${ctx.wizard.state.images.length}/3)\nSend another or type 'finish'.`
         );
       } catch (err) {
-        console.error("Image error:", err.message);
-        await ctx.reply("❌ Failed to process image.");
+        console.error("Image processing error:", err.message);
+        await ctx.reply("❌ Failed to process image. Please try again.");
       }
     } else {
       await ctx.reply("Please upload a photo or type 'finish'.");
@@ -154,10 +171,19 @@ bot.use(stage.middleware());
 
 bot.start((ctx) => ctx.scene.enter("project-wizard"));
 
+// Error handling
+bot.catch((err, ctx) => {
+  console.error(`Error for ${ctx.updateType}:`, err);
+  ctx.reply("An error occurred. Please try again.");
+});
+
 const startBot = () => {
   bot.launch();
-  console.log("bot started");
+  console.log("Bot started");
 };
 
-module.exports = startBot;
+// Handle graceful shutdown
+process.once("SIGINT", () => bot.stop("SIGINT"));
+process.once("SIGTERM", () => bot.stop("SIGTERM"));
 
+module.exports = startBot;
