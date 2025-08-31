@@ -3,7 +3,7 @@ const axios = require("axios");
 
 const getProjects = async (req, res) => {
   try {
-    const projects = await Project.find({});
+    const projects = await Project.find({}).select("-images.data"); // Exclude binary data by default
     res.status(200).json({ projects });
   } catch (error) {
     console.log(error);
@@ -11,24 +11,42 @@ const getProjects = async (req, res) => {
   }
 };
 
+// Get specific image
+const getProjectImage = async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.projectId);
+    if (!project || !project.images[req.params.imageIndex]) {
+      return res.status(404).json({ msg: "Image not found" });
+    }
+
+    const image = project.images[req.params.imageIndex];
+    res.set("Content-Type", image.contentType);
+    res.set("Content-Length", image.size);
+    res.set("Content-Disposition", `inline; filename="${image.filename}"`);
+    res.send(image.data);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ msg: error });
+  }
+};
+
 const TELEGRAM_BOT_TOKEN = process.env.BOT_TOKEN;
-const TELEGRAM_CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID; // Replace with your channel id
+const TELEGRAM_CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID;
 
 const createProject = async (req, res) => {
   try {
     const project = await Project.create(req.body);
 
-    // prepare message
+    // Prepare message
     const message = `
 🚀 *New Project Uploaded!*  
 📌 *Title:* ${project.title}  
 🖼️ *Category:* ${project.category}  
 🛠️ *Tools:* ${project.tools?.join(", ") || "N/A"}  
 👤 *Client:* ${project.client || "N/A"}  
-🔗 [View Project](${project.link || "#"})  
     `;
 
-    // send to telegram
+    // Send to telegram
     await axios.post(
       `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
       {
@@ -38,25 +56,21 @@ const createProject = async (req, res) => {
       }
     );
 
-    // send images too (optional)
-    if (project.images && project.images.length > 0) {
-      for (const img of project.images) {
-        await axios.post(
-          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`,
-          {
-            chat_id: TELEGRAM_CHANNEL_ID,
-            photo: img,
-            caption: project.title,
-          }
-        );
-      }
-    }
-
-    res.status(201).json({ project });
+    res.status(201).json({
+      project: {
+        ...project.toObject(),
+        images: project.images.map((img) => ({
+          _id: img._id,
+          contentType: img.contentType,
+          filename: img.filename,
+          size: img.size,
+        })),
+      },
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({ msg: error });
   }
 };
 
-module.exports = { getProjects, createProject };
+module.exports = { getProjects, createProject, getProjectImage };
