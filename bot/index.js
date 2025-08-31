@@ -73,7 +73,7 @@ const projectWizard = new Scenes.WizardScene(
         };
 
         await axios.post(
-          "https://eyob-portfolio-virid.vercel.app/api/projects",
+          "https://portfolio-9pxl.onrender.com/api/projects",
           payload
         );
 
@@ -106,7 +106,7 @@ const projectWizard = new Scenes.WizardScene(
         await sharp(response.data).jpeg({ quality: 70 }).toFile(savePath);
 
         // build public URL (assuming express.static is serving uploads/)
-        const publicUrl = `https://eyob-portfolio-virid.vercel.app/bot/uploads/${filename}`;
+        const publicUrl = `https://portfolio-9pxl.onrender.com/bot/uploads/${filename}`;
         ctx.wizard.state.images.push(publicUrl);
 
         await ctx.reply(
@@ -134,3 +134,4 @@ const startBot = () => {
 };
 
 module.exports = startBot;
+
