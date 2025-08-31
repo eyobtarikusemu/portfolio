@@ -102,6 +102,7 @@ const projectWizard = new Scenes.WizardScene(
         // compress
         const filename = `compressed-${Date.now()}.jpg`;
         const savePath = path.join(__dirname, "/uploads", filename);
+        console.log(savePath)
 
         await sharp(response.data).jpeg({ quality: 70 }).toFile(savePath);
 
@@ -134,5 +135,6 @@ const startBot = () => {
 };
 
 module.exports = startBot;
+
 
 
