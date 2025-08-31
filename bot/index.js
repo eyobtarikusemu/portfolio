@@ -26,9 +26,9 @@ const projectWizard = new Scenes.WizardScene(
     await ctx.reply(
       "Choose the category:",
       Markup.keyboard(
-       [ ["Logo Design", "Branding"],
+        ["Logo Design", "Branding"],
         ["Web Design", "Illustration"],
-        ["UI/UX", "Poster"]]
+        ["UI/UX", "Poster"]
       ).oneTime()
     );
     return ctx.wizard.next();
@@ -73,7 +73,7 @@ const projectWizard = new Scenes.WizardScene(
         };
 
         await axios.post(
-          "https://portfolio-9pxl.onrender.com/api/projects",
+          "https://eyob-portfolio-virid.vercel.app/api/projects",
           payload
         );
 
@@ -102,12 +102,11 @@ const projectWizard = new Scenes.WizardScene(
         // compress
         const filename = `compressed-${Date.now()}.jpg`;
         const savePath = path.join(__dirname, "/uploads", filename);
-        console.log(savePath)
 
         await sharp(response.data).jpeg({ quality: 70 }).toFile(savePath);
 
         // build public URL (assuming express.static is serving uploads/)
-        const publicUrl = `https://portfolio-9pxl.onrender.com/bot/uploads/${filename}`;
+        const publicUrl = `https://eyob-portfolio-virid.vercel.app/bot/uploads/${filename}`;
         ctx.wizard.state.images.push(publicUrl);
 
         await ctx.reply(
@@ -135,6 +134,3 @@ const startBot = () => {
 };
 
 module.exports = startBot;
-
-
-
