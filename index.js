@@ -7,7 +7,7 @@ const connectDB = require("./connect");
 const cors = require("cors");
 const router = require("./routes/projects");
 
-app.use(cors());
+app.use(cors({ origin: "*" }));
 app.use(express.json({ limit: "50mb" })); // Increase limit for image data
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use("/api", router);
@@ -22,3 +22,4 @@ const start = async () => {
   }
 };
 start();
+
