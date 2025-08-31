@@ -3,7 +3,7 @@ const axios = require("axios");
 
 const getProjects = async (req, res) => {
   try {
-    const projects = await Project.find({}).select("-images.data"); // Exclude binary data by default
+    const projects = await Project.find({}).select('-images.data');
     res.status(200).json({ projects });
   } catch (error) {
     console.log(error);
@@ -11,18 +11,17 @@ const getProjects = async (req, res) => {
   }
 };
 
-// Get specific image
 const getProjectImage = async (req, res) => {
   try {
     const project = await Project.findById(req.params.projectId);
-    if (!project || !project.images[req.params.imageIndex]) {
+    if (!project  !project.images[req.params.imageIndex]) {
       return res.status(404).json({ msg: "Image not found" });
     }
 
     const image = project.images[req.params.imageIndex];
     res.set('Content-Type', image.contentType);
     res.set('Content-Length', image.size);
-    res.set('Content-Disposition', inline; filename="${image.filename}");
+    res.set('Content-Disposition', `inline; filename="${image.filename}"`);
     res.send(image.data);
   } catch (error) {
     console.log(error);
@@ -41,8 +40,8 @@ const createProject = async (req, res) => {
     const message = `
 🚀 *New Project Uploaded!*  
 📌 *Title:* ${project.title}  
-🖼️ *Category:* ${project.category}  
-🛠️ *Tools:* ${project.tools?.join(", ") || "N/A"}  
+🖼 *Category:* ${project.category}  
+🛠 *Tools:* ${project.tools?.join(", ")  "N/A"}  
 👤 *Client:* ${project.client || "N/A"}  
     `;
 
@@ -56,16 +55,16 @@ const createProject = async (req, res) => {
       }
     );
 
-    res.status(201).json({
+    res.status(201).json({ 
       project: {
         ...project.toObject(),
-        images: project.images.map((img) => ({
+        images: project.images.map(img => ({
           _id: img._id,
           contentType: img.contentType,
           filename: img.filename,
-          size: img.size,
-        })),
-      },
+          size: img.size
+        }))
+      }
     });
   } catch (error) {
     console.log(error);
@@ -74,4 +73,3 @@ const createProject = async (req, res) => {
 };
 
 module.exports = { getProjects, createProject, getProjectImage };
-
