@@ -4,9 +4,34 @@ const axios = require("axios");
 const sharp = require("sharp");
 const fs = require("fs");
 const path = require("path");
+const FormData = require("form-data");
 
 // Initialize bot
 const bot = new Telegraf(process.env.BOT_TOKEN);
+
+// Function to upload image to your server
+async function uploadToServer(imageBuffer, filename) {
+  try {
+    const formData = new FormData();
+    formData.append("image", imageBuffer, {
+      filename: filename,
+      contentType: "image/jpeg",
+    });
+
+    const response = await axios.post(
+      "https://eyobtariku.rf.gd/uploads/upload.php",
+      formData,
+      {
+        headers: formData.getHeaders(),
+      }
+    );
+
+    return response.data.url;
+  } catch (error) {
+    console.error("Upload failed:", error.message);
+    throw new Error("Failed to upload image to server");
+  }
+}
 
 const projectWizard = new Scenes.WizardScene(
   "project-wizard",
@@ -25,11 +50,11 @@ const projectWizard = new Scenes.WizardScene(
     ctx.wizard.state.description = ctx.message.text;
     await ctx.reply(
       "Choose the category:",
-      Markup.keyboard(
+      Markup.keyboard([
         ["Logo Design", "Branding"],
         ["Web Design", "Illustration"],
-        ["UI/UX", "Poster"]
-      ).oneTime()
+        ["UI/UX", "Poster"],
+      ]).oneTime()
     );
     return ctx.wizard.next();
   },
@@ -73,7 +98,7 @@ const projectWizard = new Scenes.WizardScene(
         };
 
         await axios.post(
-          "https://eyob-portfolio-virid.vercel.app/api/projects",
+          "https://portfolio-9pxl.onrender.com/api/projects",
           payload
         );
 
@@ -100,13 +125,14 @@ const projectWizard = new Scenes.WizardScene(
         });
 
         // compress
+        const compressedImage = await sharp(response.data)
+          .jpeg({ quality: 70 })
+          .toBuffer();
+
+        // upload to your server
         const filename = `compressed-${Date.now()}.jpg`;
-        const savePath = path.join(__dirname, "/uploads", filename);
+        const publicUrl = await uploadToServer(compressedImage, filename);
 
-        await sharp(response.data).jpeg({ quality: 70 }).toFile(savePath);
-
-        // build public URL (assuming express.static is serving uploads/)
-        const publicUrl = `https://eyob-portfolio-virid.vercel.app/bot/uploads/${filename}`;
         ctx.wizard.state.images.push(publicUrl);
 
         await ctx.reply(
